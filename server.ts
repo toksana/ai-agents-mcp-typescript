@@ -19,17 +19,55 @@ serveStdio(() => {
       }),
     },
     async ({ path: dirPath }) => {
-      const absolutePath = path.resolve(dirPath);
-      const entries = await fs.readdir(absolutePath, { withFileTypes: true });
+      try {
+        const absolutePath = path.resolve(dirPath);
+        const entries = await fs.readdir(absolutePath, { withFileTypes: true });
 
-      const lines = entries.map((entry) => {
-        const icon = entry.isDirectory() ? '📁' : '📄';
-        return `${icon} ${entry.name}`;
-      });
+        const lines = entries.map((entry) => {
+          const icon = entry.isDirectory() ? '📁' : '📄';
+          return `${icon} ${entry.name}`;
+        });
 
-      return {
-        content: [{ type: 'text', text: lines.join('\n') }],
-      };
+        return {
+          content: [{ type: 'text', text: lines.join('\n') }],
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    'read_files',
+    {
+      description: 'Read the contents of a text file',
+      inputSchema: z.object({
+        path: z.string().describe('Path to the file to read'),
+      }),
+    },
+    async ({ path: filePath }) => {
+      try {
+        const absolutePath = path.resolve(filePath);
+        const content = await fs.readFile(absolutePath, 'utf-8');
+
+        return {
+          content: [{ type: 'text', text: content }],
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: Could not read file "${filePath}". ${error instanceof Error ? error.message : 'Unknown error'}`,
+          }],
+          isError: true,
+        };
+      }
     },
   );
 
