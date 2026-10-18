@@ -1,0 +1,22 @@
+{
+  "name": "ai-agents-mcp-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI agents and MCP in TypeScript",
+  "scripts": {
+    "server": "node server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
