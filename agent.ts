@@ -1,8 +1,10 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { executeToolCalls } from './phases/act.ts';
 import { createAnthropicProvider } from './llm/anthropic.ts';
-import type { Message, Tool } from './llm/types.ts';
+import type { Message } from './llm/types.ts';
+import { executeToolCalls } from './phases/act.ts';
+import { decide } from './phases/decide.ts';
+import { perceive } from './phases/perceive.ts';
 
 const client = new Client({ name: 'file-explorer-agent', version: '1.0.0' });
 
@@ -14,25 +16,15 @@ const transport = new StdioClientTransport({
 await client.connect(transport);
 
 // PERCEIVE: discover what tools the MCP server offers
-const { tools } = await client.listTools();
+const tools = await perceive(client);
 console.log(tools.map((tool) => tool.name));
-
-const llmTools: Tool[] = tools.map(({ name, description, inputSchema }) => ({
-  name,
-  description: description ?? '',
-  inputSchema: {
-    type: 'object',
-    properties: inputSchema.properties ?? {},
-    required: inputSchema.required,
-  },
-}));
 
 // DECIDE: ask the LLM what to do next
 const llm = createAnthropicProvider();
 const messages: Message[] = [
   { role: 'user', content: process.argv[2] ?? 'List the files in the current directory' },
 ];
-const response = await llm.chat(messages, llmTools);
+const response = await decide(llm, messages, tools);
 
 if (response.toolCalls.length === 0) {
   console.log(response.content);
