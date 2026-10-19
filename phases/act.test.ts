@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { describe, expect, it, vi } from 'vitest';
 import { executeToolCall, executeToolCalls } from './act.ts';
 import type { ToolExecutor } from './act.ts';
-import type { ToolCall } from './llm/types.ts';
+import type { ToolCall } from '../llm/types.ts';
 
 const buildToolCall = (): ToolCall => ({
   name: faker.lorem.word(),
