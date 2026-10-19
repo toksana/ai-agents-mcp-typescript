@@ -121,16 +121,80 @@ describe('createAnthropicProvider', () => {
 
   it('returns tool calls and null content for a tool_use reply', async () => {
     // Arrange
+    const id = faker.string.uuid();
     const name = faker.lorem.word();
     const input = { path: faker.system.directoryPath() };
-    mockFetch({ content: [{ type: 'tool_use', id: faker.string.uuid(), name, input }] });
+    mockFetch({ content: [{ type: 'tool_use', id, name, input }] });
     const llm = createAnthropicProvider({ apiKey: faker.string.alphanumeric(24) });
 
     // Act
     const result = await llm.chat([{ role: 'user', content: faker.lorem.sentence() }]);
 
     // Assert
-    expect(result).toEqual({ content: null, toolCalls: [{ name, arguments: input }] });
+    expect(result).toEqual({ content: null, toolCalls: [{ id, name, arguments: input }] });
+  });
+
+  it('maps tool_use and tool_result blocks to the Anthropic wire format', async () => {
+    // Arrange
+    const toolCallId = faker.string.uuid();
+    const name = faker.lorem.word();
+    const args = { path: faker.system.directoryPath() };
+    const text = faker.lorem.sentence();
+    const output = faker.lorem.paragraph();
+    const messages: Message[] = [
+      { role: 'user', content: faker.lorem.sentence() },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text },
+          { type: 'tool_use', id: toolCallId, name, arguments: args },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolCallId, content: output, isError: true }],
+      },
+    ];
+    const fetchMock = mockFetch({ content: [] });
+    const llm = createAnthropicProvider({ apiKey: faker.string.alphanumeric(24) });
+
+    // Act
+    await llm.chat(messages);
+
+    // Assert
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { messages: unknown[] };
+    expect(body.messages).toEqual([
+      messages[0],
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text },
+          { type: 'tool_use', id: toolCallId, name, input: args },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: toolCallId, content: output, is_error: true }],
+      },
+    ]);
+  });
+
+  it('hoists the text of a system message given as blocks', async () => {
+    // Arrange
+    const text = faker.lorem.sentence();
+    const fetchMock = mockFetch({ content: [] });
+    const llm = createAnthropicProvider({ apiKey: faker.string.alphanumeric(24) });
+
+    // Act
+    await llm.chat([
+      { role: 'system', content: [{ type: 'text', text }] },
+      { role: 'user', content: faker.lorem.sentence() },
+    ]);
+
+    // Assert
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toHaveProperty('system', text);
   });
 
   it('throws with status and body when the API responds with an error', async () => {

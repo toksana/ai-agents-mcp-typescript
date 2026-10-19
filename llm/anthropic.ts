@@ -1,4 +1,11 @@
-import type { LLMProvider, LLMResponse, Message, Tool, ToolCall } from './types.ts';
+import type {
+  ContentBlock,
+  LLMProvider,
+  LLMResponse,
+  Message,
+  Tool,
+  ToolCall,
+} from './types.ts';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL = 'claude-haiku-5-5';
@@ -23,7 +30,16 @@ interface AnthropicToolUseBlock {
   input: Record<string, unknown>;
 }
 
+interface AnthropicToolResultBlock {
+  type: 'tool_result';
+  tool_use_id: string;
+  content: string;
+  is_error: boolean;
+}
+
 type AnthropicContentBlock = AnthropicTextBlock | AnthropicToolUseBlock;
+
+type AnthropicRequestBlock = AnthropicContentBlock | AnthropicToolResultBlock;
 
 interface AnthropicMessagesResponse {
   content: AnthropicContentBlock[];
@@ -44,17 +60,43 @@ const toLLMResponse = (blocks: AnthropicContentBlock[]): LLMResponse => {
 
   const toolCalls = blocks
     .filter((block): block is AnthropicToolUseBlock => block.type === 'tool_use')
-    .map((block): ToolCall => ({ name: block.name, arguments: block.input }));
+    .map((block): ToolCall => ({ id: block.id, name: block.name, arguments: block.input }));
 
   return { content: text === '' ? null : text, toolCalls };
 };
 
+const toAnthropicBlock = (block: ContentBlock): AnthropicRequestBlock => {
+  switch (block.type) {
+    case 'text':
+      return block;
+    case 'tool_use':
+      return { type: 'tool_use', id: block.id, name: block.name, input: block.arguments };
+    case 'tool_result':
+      return {
+        type: 'tool_result',
+        tool_use_id: block.toolCallId,
+        content: block.content,
+        is_error: block.isError,
+      };
+  }
+};
+
+const toAnthropicMessage = ({ role, content }: Message) => ({
+  role,
+  content: typeof content === 'string' ? content : content.map(toAnthropicBlock),
+});
+
+const toText = (content: Message['content']): string =>
+  typeof content === 'string'
+    ? content
+    : content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n');
+
 const splitSystemMessages = (messages: Message[]) => ({
   system: messages
     .filter((message) => message.role === 'system')
-    .map((message) => message.content)
+    .map((message) => toText(message.content))
     .join('\n\n'),
-  conversation: messages.filter((message) => message.role !== 'system'),
+  conversation: messages.filter((message) => message.role !== 'system').map(toAnthropicMessage),
 });
 
 export const createAnthropicProvider = ({

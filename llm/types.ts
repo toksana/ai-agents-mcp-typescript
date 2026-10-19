@@ -1,8 +1,29 @@
 export type Role = 'user' | 'assistant' | 'system';
 
+export interface TextBlock {
+  type: 'text';
+  text: string;
+}
+
+export interface ToolUseBlock {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface ToolResultBlock {
+  type: 'tool_result';
+  toolCallId: string;
+  content: string;
+  isError: boolean;
+}
+
+export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+
 export interface Message {
   role: Role;
-  content: string;
+  content: string | ContentBlock[];
 }
 
 export interface Tool {
@@ -16,6 +37,7 @@ export interface Tool {
 }
 
 export interface ToolCall {
+  id: string;
   name: string;
   arguments: Record<string, unknown>;
 }

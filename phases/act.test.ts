@@ -5,6 +5,7 @@ import type { ToolExecutor } from './act.ts';
 import type { ToolCall } from '../llm/types.ts';
 
 const buildToolCall = (): ToolCall => ({
+  id: faker.string.uuid(),
   name: faker.lorem.word(),
   arguments: { path: faker.system.directoryPath() },
 });
