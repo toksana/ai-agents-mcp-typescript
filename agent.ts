@@ -4,6 +4,7 @@ import { createAnthropicProvider } from './llm/anthropic.ts';
 import type { Message } from './llm/types.ts';
 import { executeToolCalls } from './phases/act.ts';
 import { decide } from './phases/decide.ts';
+import { observe } from './phases/observe.ts';
 import { perceive } from './phases/perceive.ts';
 
 const client = new Client({ name: 'file-explorer-agent', version: '1.0.0' });
@@ -37,6 +38,10 @@ if (response.toolCalls.length === 0) {
   for (const { name, text, isError } of results) {
     console.log(`${isError ? 'ERROR' : 'OK'} ${name}:\n${text}`);
   }
+
+  // OBSERVE: record the assistant turn and the tool results for the next iteration
+  const history = observe(messages, response, results);
+  console.log(JSON.stringify(history.slice(messages.length), null, 2));
 }
 
 await client.close();
