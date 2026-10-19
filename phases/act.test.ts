@@ -46,7 +46,12 @@ describe('executeToolCall', () => {
     const result = await executeToolCall(executor, toolCall);
 
     // Assert
-    expect(result).toEqual({ name: toolCall.name, text: `${first}\n${second}`, isError: false });
+    expect(result).toEqual({
+      toolCallId: toolCall.id,
+      name: toolCall.name,
+      text: `${first}\n${second}`,
+      isError: false,
+    });
   });
 
   it('propagates isError from a tool-level failure', async () => {
@@ -59,7 +64,7 @@ describe('executeToolCall', () => {
     const result = await executeToolCall(executor, toolCall);
 
     // Assert
-    expect(result).toEqual({ name: toolCall.name, text: message, isError: true });
+    expect(result).toEqual({ toolCallId: toolCall.id, name: toolCall.name, text: message, isError: true });
   });
 
   it('converts a thrown Error into an error result', async () => {
@@ -74,7 +79,7 @@ describe('executeToolCall', () => {
     const result = await executeToolCall(executor, toolCall);
 
     // Assert
-    expect(result).toEqual({ name: toolCall.name, text: message, isError: true });
+    expect(result).toEqual({ toolCallId: toolCall.id, name: toolCall.name, text: message, isError: true });
   });
 
   it('converts a non-Error throw into a generic error result', async () => {
@@ -89,6 +94,7 @@ describe('executeToolCall', () => {
 
     // Assert
     expect(result).toEqual({
+      toolCallId: toolCall.id,
       name: toolCall.name,
       text: 'Unknown error calling tool',
       isError: true,

@@ -2,6 +2,7 @@ import type { CallToolResult } from '@modelcontextprotocol/client';
 import type { ToolCall } from '../llm/types.ts';
 
 export interface ToolResult {
+  toolCallId: string;
   name: string;
   text: string;
   isError: boolean;
@@ -19,16 +20,21 @@ const joinText = (content: CallToolResult['content']): string =>
 
 export const executeToolCall = async (
   executor: ToolExecutor,
-  { name, arguments: args }: ToolCall,
+  { id: toolCallId, name, arguments: args }: ToolCall,
 ): Promise<ToolResult> => {
   try {
     const result = await executor.callTool({ name, arguments: args });
 
-    return { name, text: joinText(result.content), isError: result.isError ?? false };
+    return {
+      toolCallId,
+      name,
+      text: joinText(result.content),
+      isError: result.isError ?? false,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error calling tool';
 
-    return { name, text: message, isError: true };
+    return { toolCallId, name, text: message, isError: true };
   }
 };
 
