@@ -193,4 +193,56 @@ describe('runAgent', () => {
     // Assert
     await expect(act).rejects.toThrow(RangeError);
   });
+
+  it.each([0, -1, 1.5])('rejects an invalid maxToolResultChars of %s', async (maxToolResultChars) => {
+    // Arrange
+    const { llm } = buildLLM();
+    const { executor } = buildExecutor();
+
+    // Act
+    const act = runAgent({
+      llm,
+      executor,
+      tools: [],
+      prompt: faker.lorem.sentence(),
+      maxToolResultChars,
+    });
+
+    // Assert
+    await expect(act).rejects.toThrow(RangeError);
+  });
+
+  it('truncates large tool results in history while onStep still sees the full text', async () => {
+    // Arrange
+    const maxToolResultChars = 20;
+    const toolCall = buildToolCall();
+    const output = faker.string.alpha(100);
+    const { llm } = buildLLM(toolResponse(toolCall), answerResponse());
+    const { executor } = buildExecutor(output);
+    const onStep = vi.fn();
+
+    // Act
+    const result = await runAgent({
+      llm,
+      executor,
+      tools: [],
+      prompt: faker.lorem.sentence(),
+      maxToolResultChars,
+      onStep,
+    });
+
+    // Assert
+    expect(result.history[2]).toEqual({
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          toolCallId: toolCall.id,
+          content: `${output.slice(0, maxToolResultChars)}\n[truncated: showing 20 of 100 chars]`,
+          isError: false,
+        },
+      ],
+    });
+    expect(onStep.mock.calls[0]?.[0].results[0].text).toBe(output);
+  });
 });

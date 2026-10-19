@@ -2,7 +2,7 @@ import type { LLMProvider, LLMResponse, Message, Tool } from '../llm/types.ts';
 import { executeToolCalls } from './act.ts';
 import type { ToolExecutor, ToolResult } from './act.ts';
 import { decide } from './decide.ts';
-import { observe } from './observe.ts';
+import { DEFAULT_MAX_TOOL_RESULT_CHARS, observe } from './observe.ts';
 
 const DEFAULT_MAX_ITERATIONS = 10;
 
@@ -20,6 +20,7 @@ export interface RunAgentOptions {
   tools: Tool[];
   prompt: string;
   maxIterations?: number;
+  maxToolResultChars?: number;
   onStep?: (step: AgentStep) => void;
 }
 
@@ -36,10 +37,16 @@ export const runAgent = async ({
   tools,
   prompt,
   maxIterations = DEFAULT_MAX_ITERATIONS,
+  maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS,
   onStep,
 }: RunAgentOptions): Promise<AgentResult> => {
   if (!Number.isInteger(maxIterations) || maxIterations < 1) {
     throw new RangeError(`maxIterations must be an integer >= 1, got ${maxIterations}`);
+  }
+  if (!Number.isInteger(maxToolResultChars) || maxToolResultChars < 1) {
+    throw new RangeError(
+      `maxToolResultChars must be an integer >= 1, got ${maxToolResultChars}`,
+    );
   }
 
   let history: Message[] = [{ role: 'user', content: prompt }];
@@ -61,7 +68,7 @@ export const runAgent = async ({
     const results = await executeToolCalls(executor, response.toolCalls);
 
     // OBSERVE
-    history = observe(history, response, results);
+    history = observe(history, response, results, maxToolResultChars);
     onStep?.({ iteration, response, results });
   }
 
