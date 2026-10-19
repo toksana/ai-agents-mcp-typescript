@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAnthropicProvider } from './anthropic.ts';
-import type { Message, Tool } from './llm.ts';
+import type { Message, Tool } from './types.ts';
 
 const mockFetch = (body: unknown, init: ResponseInit = { status: 200 }) => {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), init));

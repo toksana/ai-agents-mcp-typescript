@@ -1,8 +1,8 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { executeToolCalls } from './act.ts';
-import { createAnthropicProvider } from './anthropic.ts';
-import type { Message, Tool } from './llm.ts';
+import { createAnthropicProvider } from './llm/anthropic.ts';
+import type { Message, Tool } from './llm/types.ts';
 
 const client = new Client({ name: 'file-explorer-agent', version: '1.0.0' });
 

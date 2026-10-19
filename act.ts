@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/client';
-import type { ToolCall } from './llm.ts';
+import type { ToolCall } from './llm/types.ts';
 
 export interface ToolResult {
   name: string;

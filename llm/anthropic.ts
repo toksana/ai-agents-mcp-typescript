@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMResponse, Message, Tool, ToolCall } from './llm.ts';
+import type { LLMProvider, LLMResponse, Message, Tool, ToolCall } from './types.ts';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL = 'claude-haiku-5-5';
