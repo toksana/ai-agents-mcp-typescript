@@ -1,3 +1,4 @@
+import type { CallToolResult } from '@modelcontextprotocol/client';
 import type { ToolCall } from './llm.ts';
 
 export interface ToolResult {
@@ -10,27 +11,11 @@ export interface ToolExecutor {
   callTool(params: {
     name: string;
     arguments: Record<string, unknown>;
-  }): Promise<{ content: unknown[]; isError?: boolean }>;
+  }): Promise<CallToolResult>;
 }
 
-interface TextBlock {
-  type: 'text';
-  text: string;
-}
-
-const isTextBlock = (block: unknown): block is TextBlock =>
-  typeof block === 'object' &&
-  block !== null &&
-  'type' in block &&
-  block.type === 'text' &&
-  'text' in block &&
-  typeof block.text === 'string';
-
-const joinText = (content: unknown[]): string =>
-  content
-    .filter(isTextBlock)
-    .map((block) => block.text)
-    .join('\n');
+const joinText = (content: CallToolResult['content']): string =>
+  content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n');
 
 export const executeToolCall = async (
   executor: ToolExecutor,

@@ -9,7 +9,13 @@ const buildToolCall = (): ToolCall => ({
   arguments: { path: faker.system.directoryPath() },
 });
 
-const textBlock = (text: string) => ({ type: 'text', text });
+const textBlock = (text: string) => ({ type: 'text' as const, text });
+
+const imageBlock = () => ({
+  type: 'image' as const,
+  data: faker.string.alphanumeric(8),
+  mimeType: 'image/png',
+});
 
 const buildExecutor = (callTool: ToolExecutor['callTool']): ToolExecutor => ({ callTool });
 
@@ -32,7 +38,7 @@ describe('executeToolCall', () => {
     const first = faker.lorem.sentence();
     const second = faker.lorem.sentence();
     const executor = buildExecutor(async () => ({
-      content: [textBlock(first), { type: 'image', data: faker.string.alphanumeric(8) }, textBlock(second)],
+      content: [textBlock(first), imageBlock(), textBlock(second)],
     }));
 
     // Act
