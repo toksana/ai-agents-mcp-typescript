@@ -19,24 +19,38 @@ export const toAssistantMessage = ({ content, toolCalls }: LLMResponse): Message
   return { role: 'assistant', content: blocks };
 };
 
-const toToolResultBlock = ({ toolCallId, text, isError }: ToolResult): ToolResultBlock => ({
+export const DEFAULT_MAX_TOOL_RESULT_CHARS = 20_000;
+
+export const truncateText = (text: string, maxChars: number): string =>
+  text.length <= maxChars
+    ? text
+    : `${text.slice(0, maxChars)}\n[truncated: showing ${maxChars} of ${text.length} chars]`;
+
+const toToolResultBlock = (
+  { toolCallId, text, isError }: ToolResult,
+  maxChars: number,
+): ToolResultBlock => ({
   type: 'tool_result',
   toolCallId,
-  content: text,
+  content: truncateText(text, maxChars),
   isError,
 });
 
-export const toToolResultsMessage = (results: ToolResult[]): Message => ({
+export const toToolResultsMessage = (
+  results: ToolResult[],
+  maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS,
+): Message => ({
   role: 'user',
-  content: results.map(toToolResultBlock),
+  content: results.map((result) => toToolResultBlock(result, maxToolResultChars)),
 });
 
 export const observe = (
   messages: Message[],
   response: LLMResponse,
   results: ToolResult[],
+  maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS,
 ): Message[] => [
   ...messages,
   toAssistantMessage(response),
-  ...(results.length === 0 ? [] : [toToolResultsMessage(results)]),
+  ...(results.length === 0 ? [] : [toToolResultsMessage(results, maxToolResultChars)]),
 ];

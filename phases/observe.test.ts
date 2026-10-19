@@ -2,7 +2,13 @@ import { faker } from '@faker-js/faker';
 import { describe, expect, it } from 'vitest';
 import type { LLMResponse, Message, ToolCall } from '../llm/types.ts';
 import type { ToolResult } from './act.ts';
-import { observe, toAssistantMessage, toToolResultsMessage } from './observe.ts';
+import {
+  DEFAULT_MAX_TOOL_RESULT_CHARS,
+  observe,
+  toAssistantMessage,
+  toToolResultsMessage,
+  truncateText,
+} from './observe.ts';
 
 const buildToolCall = (): ToolCall => ({
   id: faker.string.uuid(),
@@ -98,7 +104,105 @@ describe('toToolResultsMessage', () => {
   });
 });
 
+describe('truncateText', () => {
+  it('returns text under the limit unchanged', () => {
+    // Arrange
+    const text = faker.string.alpha(10);
+
+    // Act
+    const result = truncateText(text, 11);
+
+    // Assert
+    expect(result).toBe(text);
+  });
+
+  it('returns text exactly at the limit unchanged', () => {
+    // Arrange
+    const text = faker.string.alpha(10);
+
+    // Act
+    const result = truncateText(text, 10);
+
+    // Assert
+    expect(result).toBe(text);
+  });
+
+  it('keeps the head and appends a marker with the shown and total counts', () => {
+    // Arrange
+    const text = faker.string.alpha(25);
+
+    // Act
+    const result = truncateText(text, 10);
+
+    // Assert
+    expect(result).toBe(`${text.slice(0, 10)}\n[truncated: showing 10 of 25 chars]`);
+  });
+});
+
+describe('toToolResultsMessage truncation', () => {
+  it('truncates long content and preserves id and error flag', () => {
+    // Arrange
+    const toolCall = buildToolCall();
+    const text = faker.string.alpha(50);
+    const result: ToolResult = { toolCallId: toolCall.id, name: toolCall.name, text, isError: true };
+
+    // Act
+    const message = toToolResultsMessage([result], 20);
+
+    // Assert
+    expect(message).toEqual({
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          toolCallId: toolCall.id,
+          content: truncateText(text, 20),
+          isError: true,
+        },
+      ],
+    });
+  });
+
+  it('applies the default limit when none is given', () => {
+    // Arrange
+    const toolCall = buildToolCall();
+    const text = faker.string.alpha(DEFAULT_MAX_TOOL_RESULT_CHARS + 5);
+    const result: ToolResult = { toolCallId: toolCall.id, name: toolCall.name, text, isError: false };
+
+    // Act
+    const message = toToolResultsMessage([result]);
+
+    // Assert
+    expect(message).toEqual({
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          toolCallId: toolCall.id,
+          content: truncateText(text, DEFAULT_MAX_TOOL_RESULT_CHARS),
+          isError: false,
+        },
+      ],
+    });
+  });
+});
+
 describe('observe', () => {
+  it('passes the limit through to the tool results', () => {
+    // Arrange
+    const toolCall = buildToolCall();
+    const response: LLMResponse = { content: null, toolCalls: [toolCall] };
+    const results: ToolResult[] = [
+      { toolCallId: toolCall.id, name: toolCall.name, text: faker.string.alpha(40), isError: false },
+    ];
+
+    // Act
+    const updated = observe([], response, results, 15);
+
+    // Assert
+    expect(updated[1]).toEqual(toToolResultsMessage(results, 15));
+  });
+
   it('appends the assistant turn and the tool results to the history', () => {
     // Arrange
     const history = [buildUserMessage()];
