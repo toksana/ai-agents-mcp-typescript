@@ -6,7 +6,7 @@
   "description": "AI agents and MCP in TypeScript",
   "scripts": {
     "server": "node server.ts",
-    "agent": "node agent.ts",
+    "agent": "node --env-file=.env agent.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
